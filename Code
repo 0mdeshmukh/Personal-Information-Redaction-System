@@ -1,0 +1,127 @@
+import os
+import io
+import re
+from PyPDF2 import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+import spacy
+
+# Load spaCy model for Named Entity Recognition (NER)
+nlp = spacy.load("en_core_web_sm")  # Make sure to install this model via pip
+
+# Function to extract text from a PDF
+def extract_text_from_pdf(pdf_path):
+    pdf_reader = PdfReader(pdf_path)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() + "\n"
+    return text
+
+# ML-Pipeline to detect sensitive entities
+def detect_sensitive_entities(text):
+    """
+    ML Pipeline:
+    This function uses spaCy's pre-trained Named Entity Recognition (NER) model
+    to detect sensitive entities such as names, emails, dates, locations, and organizations.
+    These entities are identified and replaced with '[REDACTED]'.
+    """
+    doc = nlp(text)
+    sensitive_spans = []
+    
+    # Detect personal information using NER
+    for ent in doc.ents:
+        if ent.label_ in {"PERSON", "EMAIL", "DATE", "GPE", "LOC", "ORG"}:
+            sensitive_spans.append((ent.start_char, ent.end_char))
+    
+    # Sort spans in reverse order to replace safely
+    sensitive_spans.sort(reverse=True)
+    for start, end in sensitive_spans:
+        text = text[:start] + "[REDACTED]" + text[end:]
+    
+    return text
+
+# Regex-based fallback for additional redaction
+def redact_with_regex(text):
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}\b'
+    phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]??\d{3}[-.\s]??\d{4}\b'
+    link_pattern = r'\bhttps?://[^\s]+'
+
+    # Apply regex-based redaction
+    text = re.sub(email_pattern, "[REDACTED]", text)
+    text = re.sub(phone_pattern, "[REDACTED]", text)
+    text = re.sub(link_pattern, "[REDACTED]", text)
+    return text
+
+# Function to redact sensitive information using NER + regex
+def redact_personal_info(text):
+    # Step 1: Use ML (NER) to detect entities
+    text = detect_sensitive_entities(text)
+    # Step 2: Use regex for any remaining patterns
+    text = redact_with_regex(text)
+    return text
+
+# Function to create a new PDF with redacted content
+def create_redacted_pdf(output_path, redacted_text):
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=letter)
+
+    # Add redacted text to the PDF
+    y_position = 750  # Start position for text
+    text_lines = redacted_text.split('\n')
+
+    for line in text_lines:
+        if y_position < 50:  # Start a new page if text goes too low
+            can.showPage()
+            y_position = 750
+        can.drawString(50, y_position, line[:90])  # Prevent overflow
+        y_position -= 12  # Line spacing
+
+    can.save()
+    packet.seek(0)
+
+    # Create the final PDF
+    new_pdf = PdfReader(packet)
+    pdf_writer = PdfWriter()
+    for page in new_pdf.pages:
+        pdf_writer.add_page(page)
+
+    with open(output_path, "wb") as output_pdf:
+        pdf_writer.write(output_pdf)
+
+# Main function to process PDFs
+def main():
+    input_path = input("Enter the path to a PDF file or folder: ")
+
+    # Check if input is a file or folder
+    if os.path.isfile(input_path):
+        # Single file
+        output_pdf_path = "Redacted_" + os.path.basename(input_path)
+        try:
+            print(f"Processing {input_path}...")
+            original_text = extract_text_from_pdf(input_path)
+            redacted_text = redact_personal_info(original_text)
+            create_redacted_pdf(output_pdf_path, redacted_text)
+            print(f"Redacted PDF saved as {output_pdf_path}")
+        except Exception as e:
+            print(f"An error occurred while processing {input_path}: {e}")
+    elif os.path.isdir(input_path):
+        # Folder with multiple files
+        output_folder = "Redacted_Files"
+        os.makedirs(output_folder, exist_ok=True)
+        for file_name in os.listdir(input_path):
+            if file_name.endswith(".pdf"):
+                input_pdf_path = os.path.join(input_path, file_name)
+                output_pdf_path = os.path.join(output_folder, f"Redacted_{file_name}")
+                try:
+                    print(f"Processing {file_name}...")
+                    original_text = extract_text_from_pdf(input_pdf_path)
+                    redacted_text = redact_personal_info(original_text)
+                    create_redacted_pdf(output_pdf_path, redacted_text)
+                    print(f"Redacted PDF saved as {output_pdf_path}")
+                except Exception as e:
+                    print(f"An error occurred while processing {file_name}: {e}")
+    else:
+        print("Invalid input. Please provide a valid file or folder path.")
+
+if _name_ == "_main_":
+    main()
