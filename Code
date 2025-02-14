@@ -4,10 +4,10 @@ import re
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-import spacy
+import openai
 
-# Load spaCy model for Named Entity Recognition (NER)
-nlp = spacy.load("en_core_web_sm")  # Make sure to install this model via pip
+# Set your OpenAI API key
+openai.api_key = 'your-api-key-here'  
 
 # Function to extract text from a PDF
 def extract_text_from_pdf(pdf_path):
@@ -17,28 +17,25 @@ def extract_text_from_pdf(pdf_path):
         text += page.extract_text() + "\n"
     return text
 
-# ML-Pipeline to detect sensitive entities
-def detect_sensitive_entities(text):
+# Use OpenAI's LLM to redact text
+def redact_text_using_llm(text):
     """
-    ML Pipeline:
-    This function uses spaCy's pre-trained Named Entity Recognition (NER) model
-    to detect sensitive entities such as names, emails, dates, locations, and organizations.
-    These entities are identified and replaced with '[REDACTED]'.
+    Function to use an LLM (e.g., OpenAI GPT) for redacting sensitive information.
+    We send the text to the LLM, asking it to identify sensitive entities and redact them.
     """
-    doc = nlp(text)
-    sensitive_spans = []
-    
-    # Detect personal information using NER
-    for ent in doc.ents:
-        if ent.label_ in {"PERSON", "EMAIL", "DATE", "GPE", "LOC", "ORG"}:
-            sensitive_spans.append((ent.start_char, ent.end_char))
-    
-    # Sort spans in reverse order to replace safely
-    sensitive_spans.sort(reverse=True)
-    for start, end in sensitive_spans:
-        text = text[:start] + "[REDACTED]" + text[end:]
-    
-    return text
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # You can use other models if needed
+            messages=[
+                {"role": "system", "content": "You are a text redaction assistant."},
+                {"role": "user", "content": f"Redact any sensitive information in the following text such as names, emails, locations, dates, and organizations.\n\n{text}\n\nReturn the text with '[REDACTED]' in place of sensitive information."}
+            ]
+        )
+        redacted_text = response['choices'][0]['message']['content'].strip()
+        return redacted_text
+    except Exception as e:
+        print(f"Error during LLM redaction: {e}")
+        return text
 
 # Regex-based fallback for additional redaction
 def redact_with_regex(text):
@@ -52,10 +49,10 @@ def redact_with_regex(text):
     text = re.sub(link_pattern, "[REDACTED]", text)
     return text
 
-# Function to redact sensitive information using NER + regex
+# Function to redact sensitive information using LLM + regex
 def redact_personal_info(text):
-    # Step 1: Use ML (NER) to detect entities
-    text = detect_sensitive_entities(text)
+    # Step 1: Use the LLM to redact entities
+    text = redact_text_using_llm(text)
     # Step 2: Use regex for any remaining patterns
     text = redact_with_regex(text)
     return text
@@ -123,5 +120,5 @@ def main():
     else:
         print("Invalid input. Please provide a valid file or folder path.")
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
