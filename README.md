@@ -1,37 +1,27 @@
-# 🛡️ Personal Information Redaction System (LLM-powered) 📄
+# 🛡️ Personal Information Redaction System (GUI-Powered)
 
-The **Personal Information Redaction System** is a tool designed to automatically identify and redact sensitive personal information from PDF documents. It now leverages the power of **OpenAI's Language Model (LLM)** to identify and redact sensitive data with a high level of accuracy. This system is enhanced with **regular expressions** to ensure thorough redaction of information like:
+The **Personal Information Redaction System** is a user-friendly desktop application designed to automatically identify and redact sensitive personal information from various document formats. Leveraging **Microsoft's Presidio** for PII detection and **Tesseract OCR** for image processing, this tool ensures comprehensive redaction across PDFs, text files, and images. The intuitive GUI, built with **ttkbootstrap**, offers a seamless experience for users to secure their documents.
 
-⚖️ **Names**  
-📧 **Emails**  
-📞 **Phone numbers**  
-📅 **Dates**  
-🌍 **Locations**  
-🏢 **Organizations**, etc.
+## 🚀 Key Features
 
-## How It Works 🔍
+- **Multi-format Support:** Redact PII from PDFs, text files (`.txt`, `.docx`), and images (`.png`, `.jpg`, `.jpeg`)
+- **Advanced PII Detection:** Uses Microsoft's Presidio to detect entities like names, emails, phone numbers, dates, locations, and organizations
+- **Image Redaction:** Integrates Tesseract OCR to identify and redact PII in image files
+- **Modern GUI:** Designed with ttkbootstrap for a responsive, professional interface
+- **Preview Functionality:** View documents before redaction
+- **Threaded Processing:** Keeps the UI responsive during long tasks
 
-The system extracts text from PDF files and uses **OpenAI's LLM API** in combination with **regex-based pattern matching** to redact personal information. The redacted information is replaced with `"[REDACTED]"`, and a new PDF is generated with the changes. The tool can process both single PDF files and folders containing multiple PDFs.
+## 🖥️ GUI Overview
 
----
+- **Splash Screen:** A brief splash screen appears at startup
+- **Home Screen:** Navigate between file types (PDF, Text, Image)
+- **File Selection:** Choose a file from your system
+- **Preview Area:** Displays document contents before redaction
+- **Redaction Button:** Press "Secure It" to redact PII and save the result
 
-## Example 📑
+## 📂 Supported File Types
 
-**Input File:**  
-Before redaction, the document contains sensitive information like email addresses, phone numbers, and personal names.
+- PDF Files: `.pdf`
+- Text Files: `.txt`, `.docx`
+- Image Files: `.png`, `.jpg`, `.jpeg`
 
-[**Supreme Court Judgement.pdf**](https://github.com/user-attachments/files/18218905/Supreme.Court.Judgement.pdf)
-
-**Output File:**  
-The redacted document with all sensitive information replaced with `[REDACTED]`.
-
-[**Redacted Supreme Court Judgement.pdf**](https://github.com/user-attachments/files/18218922/Redacted_Supreme.Court.Judgement.pdf)
-
----
-
-## Key Features ✨
-
-- **LLM-Powered Detection:** Uses OpenAI's Language Model to detect personal information like names, locations, and organizations with improved accuracy.
-- **Comprehensive Redaction:** Redacts emails, phone numbers, and dates using regex patterns in addition to the LLM.
-- **User-Friendly:** Handles both single PDF files and entire folders of PDFs, making it flexible for larger projects.
-- **Secure and Robust:** Replaces all detected sensitive information with `"[REDACTED]"` to ensure privacy and security.
